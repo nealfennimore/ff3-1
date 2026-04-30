@@ -139,3 +139,83 @@ cargo test
 ## License
 
 MIT
+
+---
+
+## WebAssembly
+
+This crate supports compilation to WebAssembly via [wasm-pack](https://rustwasm.github.io/wasm-pack/).
+
+### Prerequisites
+
+```bash
+cargo install wasm-pack
+```
+
+### Build
+
+```bash
+# For browsers (ES module output)
+wasm-pack build --target web
+
+# For Node.js
+wasm-pack build --target nodejs
+
+# For bundlers (webpack, vite, rollup)
+wasm-pack build --target bundler
+```
+
+Output is written to `pkg/`, containing the `.wasm` binary, a JS wrapper, and TypeScript type definitions.
+
+### Usage from JavaScript / TypeScript
+
+```typescript
+import init, { Ff3 } from "./pkg/ff3_1.js";
+
+await init();
+
+// Key is a hex string. FF3-1 requires exactly 7 bytes for the tweak.
+const cipher = new Ff3("2DE79D232DF5585D68CE47882AE256D6", 10);
+
+// encryptStrHexTweak is recommended — gives precise control over tweak bytes.
+// tweakHex must be exactly 14 hex chars (= 7 bytes).
+const ct = cipher.encryptStrHexTweak("4111111111111111", "D8E7920AFA330A", Ff3.DIGITS);
+const pt = cipher.decryptStrHexTweak(ct,                 "D8E7920AFA330A", Ff3.DIGITS);
+// pt === "4111111111111111"
+
+// Alternatively, use a 7-character ASCII string as the tweak directly
+const ct2 = cipher.encryptStr("4111111111111111", "context", Ff3.DIGITS);
+
+// Built-in alphabet constants
+Ff3.DIGITS      // "0123456789"
+Ff3.ALPHA_LOWER // "abcdefghijklmnopqrstuvwxyz"
+Ff3.ALPHANUM    // "0123456789abcdefghijklmnopqrstuvwxyz"
+```
+
+> **Tweak note:** FF3-1's fixed 7-byte tweak is more restrictive than FF1's variable tweak. If your context identifier is longer than 7 bytes (e.g. a UUID or full table name), hash it down first:
+>
+> ```js
+> const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(context));
+> const tweak7hex = Array.from(new Uint8Array(hash).slice(0, 7))
+>   .map(b => b.toString(16).padStart(2, "0")).join("");
+> ```
+
+### API reference
+
+| Method | Description |
+|---|---|
+| `new Ff3(keyHex, radix)` | Construct a cipher. `keyHex` is 32/48/64 hex chars. |
+| `encryptStr(pt, tweak, alphabet)` | Encrypt a string. Tweak must be exactly 7 UTF-8 bytes. |
+| `decryptStr(ct, tweak, alphabet)` | Decrypt a string. |
+| `encryptStrHexTweak(pt, tweakHex, alphabet)` | Encrypt with a 7-byte tweak (14 hex chars). Recommended. |
+| `decryptStrHexTweak(ct, tweakHex, alphabet)` | Decrypt with a 7-byte tweak. |
+| `encrypt(symbols, tweakHex)` | Encrypt a `Uint32Array`. Tweak is 14 hex chars. |
+| `decrypt(symbols, tweakHex)` | Decrypt a `Uint32Array`. |
+
+All methods throw a JS `Error` with a descriptive message on invalid input.
+
+### Running WASM tests
+
+```bash
+wasm-pack test --headless --chrome
+```

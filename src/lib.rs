@@ -7,6 +7,10 @@
 // the AES output S fits in u128 exactly (16 bytes = u128::MAX at most).
 // We always reduce S % modulus before adding to keep all sums below 2^97.
 
+// WASM bindings — only compiled when targeting wasm32
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
+
 use aes::cipher::{BlockEncrypt, KeyInit};
 use aes::{Aes128, Aes192, Aes256};
 use std::fmt;
@@ -75,7 +79,6 @@ fn pow_u128(base: u128, exp: usize) -> u128 {
     (0..exp).fold(1u128, |acc, _| acc * base)
 }
 
-#[derive(Debug, PartialEq)]
 pub struct Ff3Cipher {
     key: Vec<u8>,
     radix: u32,
