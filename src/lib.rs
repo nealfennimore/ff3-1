@@ -79,6 +79,7 @@ fn pow_u128(base: u128, exp: usize) -> u128 {
     (0..exp).fold(1u128, |acc, _| acc * base)
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Ff3Cipher {
     key: Vec<u8>,
     radix: u32,
